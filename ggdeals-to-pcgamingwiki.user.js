@@ -4,6 +4,7 @@
 // @version      1.4
 // @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
 // @author       g31w0fw0rld
+// @license      MIT
 // @match        https://gg.deals/game/*
 // @match        https://gg.deals/pack/*
 // @match        https://gg.deals/dlc/*
