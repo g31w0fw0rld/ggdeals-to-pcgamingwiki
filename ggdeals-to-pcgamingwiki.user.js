@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.4
+// @version      1.5
 // @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -35,6 +35,9 @@
     const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g;
 
     const PCGW_SEARCH_URL = 'https://pcgamingwiki.com/w/index.php?search=';
+    // Favicon oficial de PCGamingWiki para el icono del botón. Se carga como <img>
+    // remoto (mismo patrón que GOGDB/EGData); si el CSP lo bloquea, onerror lo oculta.
+    const PCGW_ICON_URL = 'https://www.pcgamingwiki.com/favicon.ico';
     const ACTIONS_CONTAINER_SELECTOR = '.game-info-actions';
 
     // Selectores para la detección de plataforma PC en tres niveles
@@ -105,7 +108,17 @@
         link.rel = 'nofollow noopener external';
         link.href = `${PCGW_SEARCH_URL}${encodeURIComponent(gameTitle)}`;
         link.target = '_blank';
-        link.textContent = 'View on PCGamingWiki';
+
+        const img = document.createElement('img');
+        img.src = PCGW_ICON_URL;
+        img.alt = '';
+        img.style.width = '16px';
+        img.style.height = '16px';
+        img.style.verticalAlign = 'middle';
+        img.style.marginRight = '6px';
+        img.addEventListener('error', () => img.remove());  // sin icono si el CSP lo bloquea
+        link.appendChild(img);
+        link.appendChild(document.createTextNode('View on PCGamingWiki'));
         return link;
     }
 
