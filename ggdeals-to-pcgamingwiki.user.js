@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.5
+// @version      1.6
 // @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -35,9 +35,10 @@
     const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g;
 
     const PCGW_SEARCH_URL = 'https://pcgamingwiki.com/w/index.php?search=';
-    // Favicon oficial de PCGamingWiki para el icono del botón. Se carga como <img>
-    // remoto (mismo patrón que GOGDB/EGData); si el CSP lo bloquea, onerror lo oculta.
-    const PCGW_ICON_URL = 'https://www.pcgamingwiki.com/favicon.ico';
+    // Icono de PCGamingWiki como SVG inline. gg.deals tiene un CSP estricto
+    // (img-src 'self'): bloquea imágenes externas e incluso data: URI, así que un
+    // <img> no se ve; el SVG inline es markup y no depende del CSP de imágenes.
+    const PCGW_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="vertical-align:middle"><path d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V7h3.5L13 3.5zM8 11h8v1.5H8zm0 3h8v1.5H8zm0-6h5v1.5H8z"/></svg>';
     const ACTIONS_CONTAINER_SELECTOR = '.game-info-actions';
 
     // Selectores para la detección de plataforma PC en tres niveles
@@ -109,15 +110,11 @@
         link.href = `${PCGW_SEARCH_URL}${encodeURIComponent(gameTitle)}`;
         link.target = '_blank';
 
-        const img = document.createElement('img');
-        img.src = PCGW_ICON_URL;
-        img.alt = '';
-        img.style.width = '16px';
-        img.style.height = '16px';
-        img.style.verticalAlign = 'middle';
-        img.style.marginRight = '6px';
-        img.addEventListener('error', () => img.remove());  // sin icono si el CSP lo bloquea
-        link.appendChild(img);
+        const icon = document.createElement('span');
+        icon.style.marginRight = '6px';
+        icon.style.display = 'inline-flex';
+        icon.innerHTML = PCGW_ICON_SVG;
+        link.appendChild(icon);
         link.appendChild(document.createTextNode('View on PCGamingWiki'));
         return link;
     }
