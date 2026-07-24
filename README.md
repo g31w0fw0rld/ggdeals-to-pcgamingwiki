@@ -8,7 +8,7 @@ Userscript de Tampermonkey que añade un enlace a PCGamingWiki en las páginas d
 
 **Instalación:**
 1. Instala [Tampermonkey](https://www.tampermonkey.net/).
-2. Abre el instalador: [ggdeals-to-pcgamingwiki.user.js](https://github.com/g31w0fw0rld/ggdeals-to-pcgamingwiki/raw/main/ggdeals-to-pcgamingwiki.user.js) (también en GreasyFork y OpenUserJS).
+2. Abre el instalador: [ggdeals-to-pcgamingwiki.user.js](https://github.com/g31w0fw0rld/ggdeals-to-pcgamingwiki/raw/main/ggdeals-to-pcgamingwiki.user.js) (también en [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) y [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
 **Sitios:** `gg.deals/game/*`, `gg.deals/pack/*`, `gg.deals/dlc/*`
 
@@ -18,7 +18,7 @@ Userscript de Tampermonkey que añade un enlace a PCGamingWiki en las páginas d
 
 **Install:**
 1. Install [Tampermonkey](https://www.tampermonkey.net/).
-2. Open the installer: [ggdeals-to-pcgamingwiki.user.js](https://github.com/g31w0fw0rld/ggdeals-to-pcgamingwiki/raw/main/ggdeals-to-pcgamingwiki.user.js) (also on GreasyFork and OpenUserJS).
+2. Open the installer: [ggdeals-to-pcgamingwiki.user.js](https://github.com/g31w0fw0rld/ggdeals-to-pcgamingwiki/raw/main/ggdeals-to-pcgamingwiki.user.js) (also on [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) and [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
 **Sites:** `gg.deals/game/*`, `gg.deals/pack/*`, `gg.deals/dlc/*`
 
