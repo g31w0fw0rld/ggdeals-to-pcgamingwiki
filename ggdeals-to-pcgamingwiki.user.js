@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.7
+// @version      1.7.1
 // @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -31,7 +31,7 @@
         ' Xbox & PC key - lowest price'
     ];
 
-    // Caracteres especiales a eliminar del título limpio
+    // Caracteres especiales a sustituir por espacio en el título limpio
     const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g;
 
     const PCGW_SEARCH_URL = 'https://pcgamingwiki.com/w/index.php?search=';
@@ -52,14 +52,24 @@
 
     /**
      * Limpia el título de la página eliminando los fragmentos publicitarios
-     * y caracteres especiales para obtener el nombre real del juego.
+     * y normalizando la puntuación para obtener el nombre real del juego.
      * @returns {string} El nombre limpio del juego.
      */
     function cleanTitle() {
         const rawTitle = document.title;
         const cleaned = TITLE_REPLACE_TARGETS.reduce((name, target) => {
             return name.replace(target, '');
-        }, rawTitle).replace(SPECIAL_CHARS_REGEX, '');
+        }, rawTitle)
+            // Sustituir por espacio, no borrar: al borrar el guion "Tomb Raider
+            // IV-VI Remastered" acababa como "IVVI" y "Spider-Man" como
+            // "SpiderMan". El buscador de PCGamingWiki es MediaWiki, que tokeniza
+            // la puntuación igual que un espacio, así que separar es lo que mejor
+            // se alinea con su índice; también con el apóstrofo, porque "Marvel s"
+            // casa con los tokens de "Marvel's" y "Marvels" no lo haría.
+            .replace(SPECIAL_CHARS_REGEX, ' ')
+            // Los pasos anteriores dejan espacios dobles donde había ", " o " - ".
+            .replace(/\s+/g, ' ')
+            .trim();
 
         console.log('Título original:', rawTitle);
         console.log('Título limpio:', cleaned);
