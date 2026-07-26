@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.7.1
+// @version      1.7.2
 // @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -20,15 +20,25 @@
     // CONSTANTES
     // =============================================
 
-    // Fragmentos de texto que GGDeals añade al título de la página
-    // y que deben eliminarse para obtener el nombre limpio del juego.
-    const TITLE_REPLACE_TARGETS = [
-        'Buy Cheap ',
-        'Buy cheap ',
-        ' Steam Key 🏷️ Best Price',
-        ' CD Key 🏷️ Best Price',
-        ' | GG.deals',
-        ' Xbox & PC key - lowest price'
+    // Adornos comerciales que GGDeals añade al título de la página. Antes era una
+    // lista de 6 cadenas literales, que fallaba con cualquier variante nueva ("Buy X"
+    // sin "Cheap", otra combinación de mayúsculas, otro emoji). Se aplican EN ORDEN
+    // y cada uno recorta hasta el final, así que el orden importa.
+    //
+    // Ojo con el paso del "key": lo obvio sería /\s+(?:steam|cd|pc)?\s*key\b.*$/i,
+    // pero eso se rompe con un juego llamado "The Key" — el regex coincide con el
+    // " Key" del nombre (la coincidencia más a la izquierda) y `.*$` se lleva el
+    // resto, dejando "Buy Cheap The". Por eso se exige un cualificador explícito
+    // Y que "key" haya quedado al final: "The Key Steam Key" → "The Key".
+    //
+    // El emoji va sin selector de variación (U+FE0F) a propósito: así coincide
+    // tanto si la página lo emite como 🏷 como si lo emite como 🏷️.
+    const TITLE_STRIP_PATTERNS = [
+        /\s*\|\s*GG\.deals\s*$/i,                      // sufijo del sitio
+        /\s*🏷.*$/,                                     // "🏷️ Best Price" y variantes
+        /\s*-\s*lowest price\s*$/i,                    // cola de "Xbox & PC key"
+        /\s+(?:steam|cd|pc|xbox\s*&\s*pc)\s+key\s*$/i, // solo si ya quedó al final
+        /^\s*buy\s+(?:cheap\s+)?/i,                    // prefijo comercial
     ];
 
     // Caracteres especiales a sustituir por espacio en el título limpio
@@ -57,9 +67,7 @@
      */
     function cleanTitle() {
         const rawTitle = document.title;
-        const cleaned = TITLE_REPLACE_TARGETS.reduce((name, target) => {
-            return name.replace(target, '');
-        }, rawTitle)
+        const cleaned = TITLE_STRIP_PATTERNS.reduce((name, re) => name.replace(re, ''), rawTitle)
             // Sustituir por espacio, no borrar: al borrar el guion "Tomb Raider
             // IV-VI Remastered" acababa como "IVVI" y "Spider-Man" como
             // "SpiderMan". El buscador de PCGamingWiki es MediaWiki, que tokeniza
