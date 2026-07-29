@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.7.2
+// @version      1.7.3
 // @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -45,6 +45,12 @@
     const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g;
 
     const PCGW_SEARCH_URL = 'https://pcgamingwiki.com/w/index.php?search=';
+    // El enlace NO es directo: es una búsqueda sobre el título ya limpiado, así que
+    // puede aterrizar en una lista de resultados o en el juego equivocado (el
+    // buscador de MediaWiki es flojo: a "Half-Life 2" le contesta "HALF DEAD 2").
+    // Sin avisarlo, el usuario lo lee como un fallo del script. En inglés porque la
+    // etiqueta ya lo está: este script no lleva i18n a propósito.
+    const PCGW_TOOLTIP = 'Title search on PCGamingWiki — may not land on the exact game';
     // Icono de PCGamingWiki como SVG inline. gg.deals tiene un CSP estricto
     // (img-src 'self'): bloquea imágenes externas e incluso data: URI, así que un
     // <img> no se ve; el SVG inline es markup y no depende del CSP de imágenes.
@@ -127,6 +133,7 @@
         link.rel = 'nofollow noopener external';
         link.href = `${PCGW_SEARCH_URL}${encodeURIComponent(gameTitle)}`;
         link.target = '_blank';
+        link.title = PCGW_TOOLTIP;
 
         const icon = document.createElement('span');
         icon.style.marginRight = '6px';
