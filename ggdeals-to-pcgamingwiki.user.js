@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.7.3
-// @description  Adds a link to PCGamingWiki in GG.deals game, pack, or DLC pages.
+// @version      1.7.4
+// @description  Adds a PCGamingWiki button (fixes, technical notes, known issues) to GG.deals game, pack and DLC pages, on PC only. It strips GG.deals' commercial wrapping from the title before searching, and carries the logo as inline SVG to survive the site's strict image policy.
 // @author       g31w0fw0rld
 // @license      MIT
 // @match        https://gg.deals/game/*
