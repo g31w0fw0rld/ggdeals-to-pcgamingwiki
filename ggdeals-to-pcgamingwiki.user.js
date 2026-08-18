@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GGDeals to PCGamingWiki link
 // @namespace    https://www.pcgamingwiki.com/
-// @version      1.7.4
-// @description  Adds a PCGamingWiki button (fixes, technical notes, known issues) to GG.deals game, pack and DLC pages, on PC only. It strips GG.deals' commercial wrapping from the title before searching, and carries the logo as inline SVG to survive the site's strict image policy.
+// @version      1.8.0
+// @description  Adds a PCGamingWiki button (fixes, technical notes, known issues) to GG.deals game, pack and DLC pages, on PC only. It strips GG.deals' commercial wrapping and the edition suffix from the title before searching — PCGamingWiki documents the base game and has no page per edition — and carries the logo as inline SVG to survive the site's strict image policy.
 // @author       g31w0fw0rld
 // @license      MIT
 // @match        https://gg.deals/game/*
@@ -45,12 +45,18 @@
     const SPECIAL_CHARS_REGEX = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g;
 
     const PCGW_SEARCH_URL = 'https://pcgamingwiki.com/w/index.php?search=';
+    // Sufijos de empaquetado que PCGamingWiki no usa: documenta el juego base y no
+    // tiene páginas por edición. "Definitive", "Anniversary", "Remastered" y "Game
+    // of the Year" NO se tocan: ahí sí suelen ser lanzamientos con página propia.
+    // Va DESPUÉS de cleanTitle(), que ya cambió los dos puntos por un espacio: por
+    // eso el separador de la expresión admite espacio además de ":" y guiones.
+    const SKU_EDITION_REGEX = /[\s:–—-]+(?:digital\s+)?(?:standard|deluxe|premium|ultimate|gold|platinum|complete|collector'?s|founder'?s)\s+edition\s*$/i;
     // El enlace NO es directo: es una búsqueda sobre el título ya limpiado, así que
     // puede aterrizar en una lista de resultados o en el juego equivocado (el
     // buscador de MediaWiki es flojo: a "Half-Life 2" le contesta "HALF DEAD 2").
     // Sin avisarlo, el usuario lo lee como un fallo del script. En inglés porque la
     // etiqueta ya lo está: este script no lleva i18n a propósito.
-    const PCGW_TOOLTIP = 'Title search on PCGamingWiki — may not land on the exact game';
+    const PCGW_TOOLTIP = 'Name search on PCGamingWiki — without the edition suffix, and for a DLC by its base game. May not land on the exact article';
     // Icono de PCGamingWiki como SVG inline. gg.deals tiene un CSP estricto
     // (img-src 'self'): bloquea imágenes externas e incluso data: URI, así que un
     // <img> no se ve; el SVG inline es markup y no depende del CSP de imágenes.
@@ -59,6 +65,27 @@
 
     // Selectores para la detección de plataforma PC en tres niveles
     const BREADCRUMB_SELECTOR = '.breadcrumbs-list [itemprop="name"]';
+    // Juego base de un DLC, por dos vías. PCGamingWiki no tiene artículo por DLC
+    // —los documenta dentro del juego al que pertenecen—, así que buscar el nombre
+    // del DLC no acierta nunca.
+    //
+    // 1) El aviso que la propia ficha dibuja, que es la vía buena porque lo dice
+    //    gg.deals explícitamente y trae el nombre ya enlazado:
+    //      <p class="game-dlc-info-text">This DLC requires base game
+    //         <a href="/game/river-city-girls-2/">River City Girls 2</a>.</p>
+    const DLC_BASE_LINK_SELECTOR = '.game-dlc-info-text a[href^="/game/"]';
+    // 2) Respaldo, el breadcrumb, para una ficha que no pintara ese aviso:
+    //   Home / Games / Action / PC / DOOM: The Dark Ages / DLCs / DOOM: The Dark Ages - Pre-Order Bonus DLC
+    // El juego base es el elemento JUSTO ANTES del segmento "DLCs", que es el que
+    // marca dónde acaba el juego y empieza su contenido descargable. Usa el mismo
+    // selector que la detección de PC, así que no añade un punto de fallo nuevo.
+    const BREADCRUMB_DLC_SEGMENT = /^dlcs?$/i;
+    // Segmentos de navegación del propio sitio, que nunca son un juego. Es el
+    // cinturón por si un DLC colgara directamente de la sección sin juego en medio.
+    const BREADCRUMB_NAV_SEGMENTS = /^(?:home|games|packs?|dlcs?|pc|mac|linux|action|adventure|indie|rpg|strategy|simulation|sports|racing|casual)$/i;
+    // Solo las fichas de DLC llevan juego base; /game/ y /pack/ se buscan por su
+    // propio nombre.
+    const DLC_PATH_REGEX = /^\/dlc\//;
     const ACTIVE_BADGE_SELECTOR = '.badge-wrapper.menu-item.active';
     const OS_CONTENT_SELECTOR = '.os-content .menu-item.active .font-exo';
 
@@ -71,19 +98,31 @@
      * y normalizando la puntuación para obtener el nombre real del juego.
      * @returns {string} El nombre limpio del juego.
      */
-    function cleanTitle() {
-        const rawTitle = document.title;
-        const cleaned = TITLE_STRIP_PATTERNS.reduce((name, re) => name.replace(re, ''), rawTitle)
-            // Sustituir por espacio, no borrar: al borrar el guion "Tomb Raider
-            // IV-VI Remastered" acababa como "IVVI" y "Spider-Man" como
-            // "SpiderMan". El buscador de PCGamingWiki es MediaWiki, que tokeniza
-            // la puntuación igual que un espacio, así que separar es lo que mejor
-            // se alinea con su índice; también con el apóstrofo, porque "Marvel s"
-            // casa con los tokens de "Marvel's" y "Marvels" no lo haría.
+    /**
+     * Normaliza la puntuación como espera el buscador de PCGamingWiki. Se aplica
+     * tanto al título de la página como al nombre del juego base sacado del
+     * breadcrumb: si solo pasara por aquí uno de los dos, la misma ficha buscaría
+     * "DOOM The Dark Ages" o "DOOM: The Dark Ages" según de dónde saliera el nombre.
+     * Sustituye por espacio, no borra: al borrar el guion "Tomb Raider IV-VI
+     * Remastered" acababa como "IVVI" y "Spider-Man" como "SpiderMan". El buscador
+     * es MediaWiki, que tokeniza la puntuación igual que un espacio, así que separar
+     * es lo que mejor se alinea con su índice; también con el apóstrofo, porque
+     * "Marvel s" casa con los tokens de "Marvel's" y "Marvels" no lo haría.
+     * @param {string} name - Nombre en crudo.
+     * @returns {string} Nombre con la puntuación separada y sin espacios dobles.
+     */
+    function normalizePunctuation(name) {
+        return name
             .replace(SPECIAL_CHARS_REGEX, ' ')
-            // Los pasos anteriores dejan espacios dobles donde había ", " o " - ".
+            // El paso anterior deja espacios dobles donde había ", " o " - ".
             .replace(/\s+/g, ' ')
             .trim();
+    }
+
+    function cleanTitle() {
+        const rawTitle = document.title;
+        const cleaned = normalizePunctuation(
+            TITLE_STRIP_PATTERNS.reduce((name, re) => name.replace(re, ''), rawTitle));
 
         console.log('Título original:', rawTitle);
         console.log('Título limpio:', cleaned);
@@ -127,11 +166,40 @@
      * @param {string} gameTitle - El nombre limpio del juego.
      * @returns {HTMLAnchorElement} El enlace listo para insertar.
      */
+    /**
+     * En una ficha de DLC, el nombre del juego al que pertenece: primero el aviso
+     * de la ficha y, si no estuviera, el breadcrumb.
+     * @returns {string} Nombre del juego base, o cadena vacía si no se pudo deducir.
+     */
+    function baseGameName() {
+        if (!DLC_PATH_REGEX.test(location.pathname)) return '';
+
+        const linked = document.querySelector(DLC_BASE_LINK_SELECTOR)?.textContent.trim();
+        if (linked) return normalizePunctuation(linked);
+
+        const items = Array.from(document.querySelectorAll(BREADCRUMB_SELECTOR))
+            .map((e) => e.textContent.trim())
+            .filter(Boolean);
+        const dlcAt = items.findIndex((x) => BREADCRUMB_DLC_SEGMENT.test(x));
+        if (dlcAt < 1) return '';
+
+        const candidate = items[dlcAt - 1];
+        return BREADCRUMB_NAV_SEGMENTS.test(candidate) ? '' : normalizePunctuation(candidate);
+    }
+
     function createPCGWLink(gameTitle) {
+        // En un DLC manda el juego base; si no se pudo deducir, se busca el nombre
+        // del propio DLC, que es lo que se hacía antes.
+        const base = baseGameName();
+        const forSearch = base || gameTitle;
+        // Si el recorte dejara la cadena vacía —un producto llamado solo "Deluxe
+        // Edition"— se queda el título entero, que es peor buscar que nada.
+        const searchTitle = forSearch.replace(SKU_EDITION_REGEX, '').trim() || forSearch;
+
         const link = document.createElement('a');
         link.className = 'action-desktop-btn d-flex flex-align-center flex-justify-center action-btn cta-label-desktop with-arrows action-ext';
         link.rel = 'nofollow noopener external';
-        link.href = `${PCGW_SEARCH_URL}${encodeURIComponent(gameTitle)}`;
+        link.href = `${PCGW_SEARCH_URL}${encodeURIComponent(searchTitle)}`;
         link.target = '_blank';
         link.title = PCGW_TOOLTIP;
 
